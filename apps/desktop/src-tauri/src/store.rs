@@ -144,6 +144,27 @@ pub struct OpenedStore {
     pub store: Value,
 }
 
+const SEED_STORE: &[u8] = include_bytes!("../../dev-data/test-okulu.json");
+
+fn write_seed_if_missing(path: &Path, bytes: &[u8]) -> Result<bool, String> {
+    if path.is_file() {
+        return Ok(false);
+    }
+    atomic_write(path, bytes)?;
+    Ok(true)
+}
+
+fn ensure_seeded(path: &Path) -> Result<(), String> {
+    if cfg!(debug_assertions) || path.is_file() {
+        return Ok(());
+    }
+    if !same_store_path(path, &default_store_path()?) {
+        return Ok(());
+    }
+    write_seed_if_missing(path, SEED_STORE)?;
+    Ok(())
+}
+
 fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
@@ -226,6 +247,7 @@ pub fn reset_store_path(store: Value) -> Result<StoreLocation, String> {
 #[tauri::command]
 pub fn load_store() -> Result<Option<Value>, String> {
     let path = store_path()?;
+    ensure_seeded(&path)?;
     if !path.exists() {
         return Ok(None);
     }
@@ -256,7 +278,7 @@ pub fn save_xlsx(filename: String, bytes: Vec<u8>) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{atomic_write, ensure_json, resolve_store_path, same_store_path};
+    use super::{atomic_write, ensure_json, resolve_store_path, same_store_path, write_seed_if_missing, SEED_STORE};
     use std::path::PathBuf;
 
     #[test]
@@ -295,6 +317,25 @@ mod tests {
         let via_dot = nested.join("../okullar.json");
         assert!(same_store_path(&file, &via_dot));
         assert!(!same_store_path(&file, &nested.join("baska.json")));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn seed_is_utf8_store_and_does_not_replace_existing_file() {
+        let value: serde_json::Value = serde_json::from_slice(SEED_STORE).unwrap();
+        assert_eq!(value["version"], 1);
+        assert!(value["schools"].as_array().unwrap().iter().any(|school| {
+            school["id"] == "test-okulu"
+        }));
+
+        let dir = std::env::temp_dir().join(format!("gita-seed-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("okullar.json");
+        assert!(write_seed_if_missing(&path, SEED_STORE).unwrap());
+        atomic_write(&path, b"{\"version\":1,\"schools\":[]}").unwrap();
+        assert!(!write_seed_if_missing(&path, SEED_STORE).unwrap());
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.contains("\"schools\":[]"));
         let _ = std::fs::remove_dir_all(dir);
     }
 
