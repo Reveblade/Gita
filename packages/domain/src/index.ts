@@ -1,5 +1,5 @@
 export { formatISODate, formatWeekRange, parseISODate, snapToMonday, todayISO, weekBounds } from "./dates";
-export { mod, sourceSlot } from "./rotation";
+export { mod, sourcePlaceIndex, sourceSlot } from "./rotation";
 export {
   addPlace,
   addTeacher,
@@ -17,7 +17,9 @@ export {
   reorderPlaces,
   resetToBaseline,
   setSchoolDays,
+  setTeacherPinned,
   setTeacherDuty,
+  shuffleDuties,
   setTermStart,
   setWeekCount,
   swapDisplayedCells,

@@ -380,6 +380,21 @@
   touch-action: none;
 }
 
+.cell-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.duty-cell.pinned {
+  cursor: default;
+}
+
+.duty-cell.pinned .cell-pin {
+  flex: none;
+  color: var(--accent-strong);
+}
+
 .duty-cell.empty {
   cursor: default;
   color: var(--muted);
@@ -702,6 +717,18 @@
   background: var(--surface);
 }
 
+.bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.bar-actions > .btn {
+  width: auto;
+  min-width: var(--btn-min);
+}
+
 .workspace-title {
   min-width: 0;
   overflow: hidden;
@@ -742,8 +769,13 @@
 
 .sheet-teachers .sheet-head,
 .sheet-teachers .sheet-row {
-  grid-template-columns: minmax(160px, 1.5fr) minmax(110px, 1fr) minmax(150px, 1.2fr) minmax(130px, 1fr) auto;
+  grid-template-columns: minmax(160px, 1.5fr) minmax(110px, 1fr) minmax(150px, 1.2fr) minmax(130px, 1fr) 64px auto;
   min-height: 48px;
+}
+
+.sheet-pin {
+  display: flex;
+  justify-content: center;
 }
 
 .sheet-places .sheet-head,
@@ -1074,6 +1106,11 @@
 .icon-btn:hover:not(:disabled) {
   background: var(--paper);
   border-color: var(--line);
+}
+
+.icon-btn.on {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .icon-btn:disabled {
@@ -1410,6 +1447,25 @@
       "main";
   }
 
+  .workspace-bar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .workspace-title {
+    flex: 1 1 100%;
+  }
+
+  .bar-actions {
+    width: 100%;
+  }
+
+  .bar-actions > .btn {
+    flex: 1 1 0;
+  }
+
   .sidebar {
     flex-direction: row;
     align-items: center;
@@ -1545,7 +1601,8 @@
     font-weight: 650;
   }
 
-  .sheet-teachers .sheet-actions {
+  .sheet-teachers .sheet-actions,
+  .sheet-teachers .sheet-pin {
     justify-content: flex-start;
   }
 

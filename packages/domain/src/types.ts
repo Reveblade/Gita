@@ -7,6 +7,8 @@ export type Teacher = {
   firstName: string;
   lastName: string;
   branch: string;
+  /** Çakılı öğretmen her hafta aynı gün ve yerde kalır. Karıştırma da onu oynatmaz. */
+  pinned: boolean;
 };
 
 export type Place = {
@@ -26,7 +28,7 @@ export type School = {
   places: Place[];
   /** Öğretmen ekranındaki ilk nöbet. Sıfırla bunu tabloya geri yazar. */
   baseline: Partial<Record<Weekday, DayAssignment>>;
-  /** Tablonun kullandığı atama. Haftalar bunun üzerinden kayar. */
+  /** Tablonun kullandığı atama. Haftalar aynı günde yeri kaydırır; çakılı hücre durur. */
   assignment: Partial<Record<Weekday, DayAssignment>>;
 };
 

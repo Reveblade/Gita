@@ -16,7 +16,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { DotsSixVertical } from "@phosphor-icons/react";
+import { DotsSixVertical, PushPin } from "@phosphor-icons/react";
 import { useLayoutEffect, useRef, useState } from "react";
 import {
   DAY_LABELS,
@@ -149,12 +149,14 @@ function DutyCell({
   const teacherId = teacherIdAt(school, weekIndex, day, placeIndex);
   const teacher = school.teachers.find((item) => item.id === teacherId);
   const label = teacher ? teacherName(teacher) : "—";
+  const pinned = teacher?.pinned ?? false;
   const id = `cell:${day}:${placeIndex}`;
-  const drag = useDraggable({ id, disabled: !teacherId });
-  const drop = useDroppable({ id });
+  const drag = useDraggable({ id, disabled: !teacherId || pinned });
+  const drop = useDroppable({ id, disabled: pinned });
   const className = [
     "duty-cell",
     teacherId ? "" : "empty",
+    pinned ? "pinned" : "",
     drop.isOver ? "over" : "",
     held ? "held" : "",
     moving ? "moving" : "",
@@ -170,9 +172,12 @@ function DutyCell({
       className={className}
       data-place-id={placeId}
       data-cell-id={`${day}:${placeIndex}`}
-      {...(teacherId ? { ...drag.attributes, ...drag.listeners } : {})}
+      {...(teacherId && !pinned ? { ...drag.attributes, ...drag.listeners } : {})}
     >
-      <span className="cell-label">{label}</span>
+      <span className="cell-label">
+        {pinned ? <PushPin className="cell-pin" size={14} weight="fill" aria-hidden /> : null}
+        {label}
+      </span>
     </td>
   );
 }

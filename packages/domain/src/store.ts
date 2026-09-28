@@ -66,6 +66,7 @@ function parseTeacher(value: unknown): Teacher | null {
     firstName,
     lastName,
     branch: typeof value.branch === "string" ? value.branch.trim() : "",
+    pinned: value.pinned === true,
   };
 }
 

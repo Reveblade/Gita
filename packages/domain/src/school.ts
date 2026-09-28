@@ -1,5 +1,5 @@
 import { snapToMonday, todayISO } from "./dates";
-import { sourceSlot } from "./rotation";
+import { sourcePlaceIndex } from "./rotation";
 import {
   DAY_LABELS,
   DEFAULT_DAYS,
@@ -139,6 +139,7 @@ export function createTeacher(firstName: string, lastName: string, branch: strin
     firstName: firstName.trim(),
     lastName: lastName.trim(),
     branch: branch.trim(),
+    pinned: false,
   };
 }
 
@@ -150,7 +151,9 @@ export function addTeacher(school: School, teacher: Teacher): School {
 export function updateTeacher(school: School, teacher: Teacher): School {
   return {
     ...school,
-    teachers: school.teachers.map((item) => (item.id === teacher.id ? { ...teacher } : item)),
+    teachers: school.teachers.map((item) =>
+      item.id === teacher.id ? { ...item, ...teacher, pinned: teacher.pinned ?? item.pinned } : item,
+    ),
   };
 }
 
@@ -265,6 +268,89 @@ export function firstOpenDuty(school: School): { day: Weekday; placeId: string }
   return fallback;
 }
 
+function teacherAnchor(
+  school: School,
+  teacherId: string,
+): { day: Weekday; placeId: string } | null {
+  return (
+    findTeacher(school.baseline, school.days, school.places, teacherId) ??
+    findTeacher(school.assignment, school.days, school.places, teacherId)
+  );
+}
+
+/** Çakılı öğretmenin günü ve yeri haftalık kaydırmanın ve karıştırmanın dışında kalır. */
+export function setTeacherPinned(school: School, teacherId: string, pinned: boolean): School {
+  const current = school.teachers.find((teacher) => teacher.id === teacherId);
+  if (!current || current.pinned === pinned) return school;
+  const anchor = teacherAnchor(school, teacherId);
+  if (pinned && !anchor) return school;
+  const teachers = school.teachers.map((teacher) =>
+    teacher.id === teacherId ? { ...teacher, pinned } : teacher,
+  );
+  if (!pinned || !anchor) return { ...school, teachers };
+  const baseline = placeTeacher(school.baseline, school.days, teacherId, anchor.day, anchor.placeId);
+  const assignment = placeTeacher(school.assignment, school.days, teacherId, anchor.day, anchor.placeId);
+  if (baseline === school.baseline && assignment === school.assignment) return { ...school, teachers };
+  return { ...school, teachers, baseline, assignment };
+}
+
+function shuffleCopy<T>(items: T[], random: () => number): T[] {
+  const next = items.slice();
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(random() * (index + 1));
+    const current = next[index];
+    const other = next[swap];
+    if (current === undefined || other === undefined) continue;
+    next[index] = other;
+    next[swap] = current;
+  }
+  return next;
+}
+
+/** Çakılı öğretmen durur. Diğerlerinin ilk nöbeti açık gün ve yerlere yeniden dağıtılır. */
+export function shuffleDuties(school: School, random: () => number = Math.random): School {
+  if (school.days.length === 0 || school.places.length === 0) return school;
+  const pinned = new Set(school.teachers.filter((teacher) => teacher.pinned).map((teacher) => teacher.id));
+  const grid = emptyAssignment(school.days, school.places);
+  const taken = new Set<string>();
+  for (const teacher of school.teachers) {
+    if (!pinned.has(teacher.id)) continue;
+    const anchor = teacherAnchor(school, teacher.id);
+    if (!anchor) continue;
+    const row = grid[anchor.day] ?? {};
+    row[anchor.placeId] = teacher.id;
+    grid[anchor.day] = row;
+    taken.add(`${anchor.day}:${anchor.placeId}`);
+  }
+  const open: { day: Weekday; placeId: string }[] = [];
+  for (const day of school.days) {
+    for (const place of school.places) {
+      if (!taken.has(`${day}:${place.id}`)) open.push({ day, placeId: place.id });
+    }
+  }
+  const slots = shuffleCopy(open, random);
+  const moving = school.teachers.filter((teacher) => !teacher.pinned);
+  for (let index = 0; index < moving.length && index < slots.length; index += 1) {
+    const teacher = moving[index];
+    const slot = slots[index];
+    if (!teacher || !slot) continue;
+    const row = grid[slot.day] ?? {};
+    row[slot.placeId] = teacher.id;
+    grid[slot.day] = row;
+  }
+  if (
+    sameAssignment(school.baseline, grid, school.days, school.places) &&
+    sameAssignment(school.assignment, grid, school.days, school.places)
+  ) {
+    return school;
+  }
+  return {
+    ...school,
+    baseline: grid,
+    assignment: projectAssignment(grid, school.days, school.places),
+  };
+}
+
 /** İlk nöbeti gün ve yere yazar. Başlangıç haftası değişmez; aynı hücre her iki ızgaraya da işlenir. */
 export function setTeacherDuty(
   school: School,
@@ -308,20 +394,28 @@ export function assignTeacher(
   return { ...school, assignment: { ...school.assignment, [day]: row } };
 }
 
+function fixedPlaceIndexes(school: School, day: Weekday): number[] {
+  const pinned = new Set(school.teachers.filter((teacher) => teacher.pinned).map((teacher) => teacher.id));
+  const indexes: number[] = [];
+  school.places.forEach((place, index) => {
+    const teacherId = school.assignment[day]?.[place.id];
+    if (teacherId && pinned.has(teacherId)) indexes.push(index);
+  });
+  return indexes;
+}
+
 function displayedSource(
   school: School,
   weekIndex: number,
   day: Weekday,
   placeIndex: number,
 ): { day: Weekday; placeId: string } | null {
-  const dayIndex = school.days.indexOf(day);
-  const placeCount = school.places.length;
-  if (dayIndex < 0 || placeCount === 0 || placeIndex < 0 || placeIndex >= placeCount) return null;
-  const source = sourceSlot(weekIndex, dayIndex, placeIndex, school.days.length, placeCount);
-  const sourceDay = school.days[source.dayIndex];
-  const placeId = school.places[source.placeIndex]?.id;
-  if (!sourceDay || !placeId) return null;
-  return { day: sourceDay, placeId };
+  if (!school.days.includes(day)) return null;
+  const sourceIndex = sourcePlaceIndex(weekIndex, placeIndex, school.places.length, fixedPlaceIndexes(school, day));
+  if (sourceIndex === null) return null;
+  const placeId = school.places[sourceIndex]?.id;
+  if (!placeId) return null;
+  return { day, placeId };
 }
 
 export function teacherIdAt(
@@ -347,6 +441,10 @@ export function swapDisplayedCells(
   const sourceB = displayedSource(school, weekIndex, day, placeIndexB);
   if (!sourceA || !sourceB) return school;
   if (sourceA.day === sourceB.day && sourceA.placeId === sourceB.placeId) return school;
+  const pinned = new Set(school.teachers.filter((teacher) => teacher.pinned).map((teacher) => teacher.id));
+  const occupantA = school.assignment[sourceA.day]?.[sourceA.placeId] ?? null;
+  const occupantB = school.assignment[sourceB.day]?.[sourceB.placeId] ?? null;
+  if ((occupantA && pinned.has(occupantA)) || (occupantB && pinned.has(occupantB))) return school;
   const assignment: School["assignment"] = { ...school.assignment };
   const rowA: DayAssignment = { ...(assignment[sourceA.day] ?? {}) };
   const rowB: DayAssignment = sourceA.day === sourceB.day ? rowA : { ...(assignment[sourceB.day] ?? {}) };

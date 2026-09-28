@@ -5,6 +5,8 @@ import {
   firstOpenDuty,
   removeTeacher,
   setTeacherDuty,
+  setTeacherPinned,
+  shuffleDuties,
   teacherDuty,
   teacherName,
   updateTeacher,
@@ -12,6 +14,7 @@ import {
   type Weekday,
 } from "@gita/domain";
 import { Dialog } from "@gita/ui";
+import { PushPin, Shuffle } from "@phosphor-icons/react";
 import { useState, type FormEvent } from "react";
 import { useGita } from "../store";
 import { EmptySchool } from "./EmptySchool";
@@ -113,7 +116,7 @@ function EditTeacherDialog({
     event.preventDefault();
     if (!firstName.trim() || !lastName.trim()) return;
     onSave({
-      id: teacher.id,
+      ...teacher,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       branch: branch.trim(),
@@ -171,6 +174,9 @@ export function TeachersPage() {
 
   if (!school) return <EmptySchool />;
 
+  const canShuffle =
+    school.places.length > 0 && school.days.length > 0 && school.teachers.some((teacher) => !teacher.pinned);
+
   function writeDuty(teacherId: string, day: Weekday, placeId: string) {
     updateSchool((current) => setTeacherDuty(current, teacherId, day, placeId));
   }
@@ -179,9 +185,20 @@ export function TeachersPage() {
     <div className="workspace">
       <header className="workspace-bar">
         <h1 className="workspace-title">Öğretmenler</h1>
-        <button className="btn primary" type="button" onClick={() => setAdding(true)}>
-          Ekle
-        </button>
+        <div className="bar-actions">
+          <button
+            className="btn"
+            type="button"
+            disabled={!canShuffle}
+            onClick={() => updateSchool((current) => shuffleDuties(current))}
+          >
+            <Shuffle size={16} />
+            Karıştır
+          </button>
+          <button className="btn primary" type="button" onClick={() => setAdding(true)}>
+            Ekle
+          </button>
+        </div>
       </header>
       <div className="workspace-body">
         {school.teachers.length === 0 ? (
@@ -200,6 +217,9 @@ export function TeachersPage() {
               </span>
               <span className="sheet-cell" role="columnheader">
                 Gün
+              </span>
+              <span className="sheet-cell sheet-pin" role="columnheader">
+                Sabit
               </span>
               <span className="sheet-cell sheet-actions" role="columnheader">
                 <span className="sr-only">İşlem</span>
@@ -257,6 +277,21 @@ export function TeachersPage() {
                       ))}
                     </select>
                   </span>
+                  <span className="sheet-cell sheet-pin" role="cell" data-label="Sabit">
+                    <button
+                      className={teacher.pinned ? "icon-btn on" : "icon-btn"}
+                      type="button"
+                      aria-pressed={teacher.pinned}
+                      aria-label={teacher.pinned ? `${name} çakılı nöbetini kaldır` : `${name} nöbetini çak`}
+                      title={teacher.pinned ? "Her hafta aynı gün ve yerde" : "Gün ve yeri çak"}
+                      disabled={!duty}
+                      onClick={() =>
+                        updateSchool((current) => setTeacherPinned(current, teacher.id, !teacher.pinned))
+                      }
+                    >
+                      <PushPin size={16} weight={teacher.pinned ? "fill" : "regular"} />
+                    </button>
+                  </span>
                   <span className="sheet-cell sheet-actions" role="cell">
                     <button className="btn" type="button" onClick={() => setEditing(teacher)}>
                       Düzenle
@@ -286,7 +321,12 @@ export function TeachersPage() {
           key={editing.id}
           teacher={editing}
           onClose={() => setEditing(null)}
-          onSave={(teacher) => updateSchool((current) => updateTeacher(current, teacher))}
+          onSave={(teacher) =>
+            updateSchool((current) => {
+              const pinned = current.teachers.find((item) => item.id === teacher.id)?.pinned ?? false;
+              return updateTeacher(current, { ...teacher, pinned });
+            })
+          }
           onDelete={() => {
             const id = editing.id;
             updateSchool((current) => removeTeacher(current, id));
