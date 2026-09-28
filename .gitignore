@@ -1,0 +1,9 @@
+node_modules
+dist
+.DS_Store
+*.log
+apps/desktop/src-tauri/target
+apps/desktop/src-tauri/gen
+apps/desktop/dev-data/*.json
+apps/desktop/dev-data/gita-yol.txt
+apps/desktop/src-tauri/app-icon.png

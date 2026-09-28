@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@import "@gita/ui/tokens.css";
+@import "@gita/ui/shell.css";
+@import "./print/print.css";
+
+@theme inline {
+  --font-sans: var(--font-ui);
+  --font-serif: var(--font-display);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-accent: var(--accent);
+}
+
+@source "./**/*.{ts,tsx}";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";

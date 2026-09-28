@@ -1,0 +1,14 @@
+{
+  "name": "gita",
+  "private": true,
+  "packageManager": "pnpm@10.30.3",
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
+  "scripts": {
+    "dev": "pnpm --filter @gita/desktop dev",
+    "build": "pnpm --filter @gita/desktop build",
+    "test": "pnpm --filter @gita/domain test && pnpm --filter @gita/desktop test",
+    "tauri": "pnpm --filter @gita/desktop tauri"
+  }
+}

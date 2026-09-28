@@ -1,0 +1,122 @@
+.print-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: auto;
+  background: #d9d0c2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 20px 40px;
+}
+
+.print-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  width: min(100%, 297mm);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.print-toolbar span {
+  margin-right: auto;
+}
+
+.sheet {
+  background: white;
+  color: #1e2430;
+  box-shadow: 0 16px 40px rgba(40, 28, 12, 0.16);
+  padding: 12mm;
+}
+
+.sheet.landscape {
+  width: 297mm;
+  min-height: 210mm;
+  page: sheet-land;
+}
+
+.sheet.portrait {
+  width: 210mm;
+  min-height: 297mm;
+  display: flex;
+  flex-direction: column;
+  gap: 14mm;
+  page: sheet-port;
+}
+
+.print-school {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 650;
+  margin: 0 0 4px;
+}
+
+.print-meta {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.print-table th,
+.print-table td {
+  border: 1px solid #1e2430;
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.print-table th {
+  background: #e7f0ea;
+}
+
+@page sheet-land {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+@page sheet-port {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
+@media print {
+  body {
+    background: white;
+  }
+
+  .app-shell {
+    display: none !important;
+  }
+
+  .print-preview {
+    position: static;
+    background: white;
+    padding: 0;
+    overflow: visible;
+    display: block;
+  }
+
+  .print-toolbar {
+    display: none !important;
+  }
+
+  .sheet {
+    box-shadow: none;
+    width: auto;
+    min-height: 0;
+    padding: 0;
+  }
+}
